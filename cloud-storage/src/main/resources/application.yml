@@ -1,0 +1,31 @@
+server:
+  port: 8081 # Порт, на котором будет работать ваше приложение
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:cloud_storage_db # URL для In-Memory H2 базы данных
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update # Автоматическое создание/обновление таблиц при запуске приложения (только для разработки!)
+    show-sql: true # Отображение SQL-запросов в консоли
+  servlet:
+    multipart:
+      max-file-size: 10MB # Максимальный размер файла для загрузки (пример)
+      max-request-size: 10MB # Максимальный размер запроса (включая файл)
+  security:
+    user:
+      name: user # Дефолтный логин (мы это переопределим через БД)
+      password: password # Дефолтный пароль (мы это переопределим через БД)
+
+file:
+  storage:
+    location: ./uploads # Путь для хранения загруженных файлов (создастся в корне проекта)
+
+logging:
+  level:
+    org.springframework.web: DEBUG # Уровень логирования для веб-запросов
+    com.example.cloudstorage: DEBUG # Уровень логирования для вашего приложения
