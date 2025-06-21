@@ -4,7 +4,7 @@ import com.example.cloud_storage.exception.CloudStorageException;
 import com.example.cloud_storage.model.User;
 import com.example.cloud_storage.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager; // <--- Этот импорт пока оставьте
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,8 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.UUID;
+
 @Service
-@Slf4j
+@Slf4j // Lombok аннотация для автоматического создания логгера
 public class AuthService implements UserDetailsService {
 
     private final UserRepository userRepository;
@@ -27,60 +28,62 @@ public class AuthService implements UserDetailsService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public String generateAuthToken(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-
-        String authToken = UUID.randomUUID().toString();
-        user.setAuthToken(authToken);
-        user.setTokenCreationTime(System.currentTimeMillis());
-        userRepository.save(user);
-
-        log.info("Generated token for user {}: {}", username, authToken);
-        return authToken;
-    }
-
-    public UserRepository getUserRepository() {
-        return userRepository;
-    }
-
     @Transactional
     public String login(String username, String password) {
+        log.info("Attempting login for user '{}'", username);
+
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new CloudStorageException("Bad credentials: User not found"));
+                .orElseThrow(() -> {
+                    // Важно: не сообщайте, что именно не так - логин или пароль.
+                    log.warn("Login failed for non-existent user '{}'", username);
+                    return new CloudStorageException("Bad credentials");
+                });
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new CloudStorageException("Bad credentials: Invalid password");
+            log.warn("Login failed for user '{}' due to invalid password", username);
+            throw new CloudStorageException("Bad credentials");
         }
 
         String authToken = UUID.randomUUID().toString();
         user.setAuthToken(authToken);
-        user.setTokenCreationTime(System.currentTimeMillis()); // Сохраняем время создания токена
-        userRepository.save(user); // Сохраняем токен в БД
+        userRepository.save(user);
+
+        // Не логируем полный токен из соображений безопасности.
+        // Логируем только его часть для возможности поиска.
+        log.info("User '{}' successfully logged in. Token suffix: ...{}", username, authToken.substring(authToken.length() - 4));
 
         return authToken;
     }
 
     @Transactional
     public void logout(String authToken) {
-        User user = userRepository.findByAuthToken(authToken)
-                .orElseThrow(() -> new CloudStorageException("Unauthorized: Invalid auth token"));
+        log.info("Attempting logout for token suffix: ...{}", authToken.substring(authToken.length() - 4));
 
-        // 2. Удаляем токен (делаем его недействительным)
+        User user = userRepository.findByAuthToken(authToken)
+                .orElseThrow(() -> {
+                    log.warn("Logout failed: token not found. Suffix: ...{}", authToken.substring(authToken.length() - 4));
+                    return new CloudStorageException("Unauthorized: Invalid auth token");
+                });
+
         user.setAuthToken(null);
-        user.setTokenCreationTime(null);
         userRepository.save(user);
+        log.info("User '{}' successfully logged out.", user.getUsername());
     }
 
 
     public User getUserByAuthToken(String authToken) {
+        // Эта операция вызывается часто, поэтому для нее можно использовать уровень DEBUG,
+        // если вы хотите видеть ее в логах только при детальной отладке.
+        log.debug("Fetching user by token suffix: ...{}", authToken.substring(authToken.length() - 4));
         return userRepository.findByAuthToken(authToken)
                 .orElseThrow(() -> new CloudStorageException("Unauthorized: Invalid auth token"));
     }
 
     @Transactional
     public void registerUser(String username, String password) {
+        log.info("Attempting to register new user '{}'", username);
         if (userRepository.findByUsername(username).isPresent()) {
+            log.warn("Registration failed: username '{}' already exists.", username);
             throw new CloudStorageException("User with this username already exists");
         }
         User newUser = User.builder()
@@ -88,28 +91,26 @@ public class AuthService implements UserDetailsService {
                 .password(passwordEncoder.encode(password))
                 .build();
         userRepository.save(newUser);
+        log.info("User '{}' registered successfully.", username);
     }
 
-//    @Override
-//    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-//        User user = userRepository.findByUsername(username)
-//                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
-//        return new org.springframework.security.core.userdetails.User(
-//                user.getUsername(), user.getPassword(), Collections.emptyList());
-//    }
-@Override
-public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
-    return new org.springframework.security.core.userdetails.User(
-            user.getUsername(),
-            user.getPassword(),
-            Collections.emptyList()
-    );
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Это внутренний метод Spring Security, DEBUG уровень здесь идеален.
+        log.debug("Spring Security is loading user by username: '{}'", username);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    log.warn("Spring Security failed to find user '{}'", username);
+                    return new UsernameNotFoundException("User not found with username: " + username);
+                });
+        return new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                user.getPassword(),
+                Collections.emptyList()
+        );
+    }
 }
 
 
 
 
-
-}
