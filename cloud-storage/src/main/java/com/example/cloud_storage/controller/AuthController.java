@@ -5,6 +5,7 @@ import com.example.cloud_storage.dto.AuthResponse;
 import com.example.cloud_storage.exception.CloudStorageException;
 import com.example.cloud_storage.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,36 +25,30 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
-    private final AuthenticationManager authenticationManager;
-
-
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
-            // Аутентификация пользователя через AuthenticationManager
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authRequest.getLogin(), authRequest.getPassword())
-            );
-
-            // Если аутентификация прошла успешно, генерируем и сохраняем токен
-            String authToken = authService.generateAuthToken(authRequest.getLogin());
-            log.info("User {} logged in successfully.", authRequest.getLogin());
+            String authToken = authService.login(authRequest.getLogin(), authRequest.getPassword());
             return ResponseEntity.ok(new AuthResponse(authToken));
 
-        } catch (BadCredentialsException ex) {
-            log.warn("Login failed for user {}: Invalid credentials.", authRequest.getLogin());
-            throw new CloudStorageException("Bad credentials: Invalid username or password");
-        } catch (Exception ex) {
-            log.error("An unexpected error occurred during login for user {}: {}", authRequest.getLogin(), ex.getMessage());
-            throw new CloudStorageException("An unexpected error occurred during login: " + ex.getMessage());
+        } catch (CloudStorageException ex) {
+
+            log.warn("Login failed for user {}: {}", authRequest.getLogin(), ex.getMessage());
+            // ошибка.
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthResponse(ex.getMessage()));
         }
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader("auth-token") String authToken) {
-        log.info("Attempting logout for token: {}", authToken);
-        authService.logout(authToken);
-        return ResponseEntity.ok().build();
+        try {
+            authService.logout(authToken);
+            return ResponseEntity.ok().build();
+        } catch (CloudStorageException ex) {
+            // Если токен не найден, сервис выбросит исключение.
+            // 401 Unauthorized.
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 }

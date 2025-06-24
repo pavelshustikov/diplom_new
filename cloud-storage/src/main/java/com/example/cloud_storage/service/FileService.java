@@ -54,13 +54,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
+
 @Service
 @Slf4j
-@RequiredArgsConstructor // Used for dependency injection
+@RequiredArgsConstructor
 public class FileService {
 
     private final FileRepository fileRepository;
-    private final UserRepository userRepository; // Inject UserRepository
+    private final UserRepository userRepository; // UserRepository здесь нужен, возможно, для других операций, но не для получения текущего пользователя.
 
     @Value("${file.storage.location}")
     private String fileStorageLocation;
@@ -82,21 +84,21 @@ public class FileService {
     }
 
     @Transactional
-    public void uploadFile(String filename, MultipartFile multipartFile, String username) {
-        log.info("User '{}' is attempting to upload file '{}'", username, filename);
+    public void uploadFile(String filename, MultipartFile multipartFile, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+        log.info("User '{}' is attempting to upload file '{}'", user.getUsername(), filename);
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.warn("User '{}' not found during file upload.", username);
-                    return new CloudStorageException("User '" + username + "' not found.");
-                });
+        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
+        // User user = userRepository.findByUsername(username)
+        //         .orElseThrow(() -> {
+        //             log.warn("User '{}' not found during file upload.", username);
+        //             return new CloudStorageException("User '" + username + "' not found.");
+        //         });
 
         if (fileRepository.findByFilenameAndUser(filename, user).isPresent()) {
-            log.warn("User '{}' failed to upload file. File '{}' already exists.", username, filename);
+            log.warn("User '{}' failed to upload file. File '{}' already exists.", user.getUsername(), filename);
             throw new CloudStorageException("A file named '" + filename + "' already exists for this user.");
         }
 
-        // Create a unique path for the file using the username
         Path targetLocation = Paths.get(fileStorageLocation).resolve(user.getUsername() + "_" + filename);
 
         try {
@@ -107,29 +109,31 @@ public class FileService {
                     .size(multipartFile.getSize())
                     .uploadDate(LocalDateTime.now())
                     .path(targetLocation.toString())
-                    .user(user)
+                    .user(user) // Привязываем файл к полученному объекту User
                     .build();
             fileRepository.save(fileEntity);
-            log.info("File '{}' successfully uploaded by user '{}' to path {}", filename, username, targetLocation);
+            log.info("File '{}' successfully uploaded by user '{}' to path {}", filename, user.getUsername(), targetLocation);
 
         } catch (IOException ex) {
-            log.error("Failed to save file {} for user {}", filename, username, ex);
+            log.error("Failed to save file {} for user {}", filename, user.getUsername(), ex);
             throw new CloudStorageException("Could not save file " + filename + ". Please try again! " + ex.getMessage());
         }
     }
 
     @Transactional
-    public void deleteFile(String filename, String username) {
-        log.info("User '{}' is attempting to delete file '{}'", username, filename);
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.warn("User '{}' not found during file deletion.", username);
-                    return new CloudStorageException("User '" + username + "' not found.");
-                });
+    public void deleteFile(String filename, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+        log.info("User '{}' is attempting to delete file '{}'", user.getUsername(), filename);
+
+        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
+        // User user = userRepository.findByUsername(username)
+        //         .orElseThrow(() -> {
+        //             log.warn("User '{}' not found during file deletion.", username);
+        //             return new CloudStorageException("User '" + username + "' not found.");
+        //         });
 
         File fileEntity = fileRepository.findByFilenameAndUser(filename, user)
                 .orElseThrow(() -> {
-                    log.warn("User '{}' attempted to delete a non-existent file '{}'", username, filename);
+                    log.warn("User '{}' attempted to delete a non-existent file '{}'", user.getUsername(), filename);
                     return new CloudStorageException("File '" + filename + "' not found for this user.");
                 });
 
@@ -137,47 +141,44 @@ public class FileService {
             Path filePath = Paths.get(fileEntity.getPath());
             Files.deleteIfExists(filePath);
             fileRepository.delete(fileEntity);
-            log.info("File '{}' successfully deleted by user '{}'", filename, username);
+            log.info("File '{}' successfully deleted by user '{}'", filename, user.getUsername());
         } catch (IOException ex) {
-            log.error("Error while deleting file '{}' from disk for user '{}'", filename, username, ex);
+            log.error("Error while deleting file '{}' from disk for user '{}'", filename, user.getUsername(), ex);
             throw new CloudStorageException("Failed to delete file " + filename + ". " + ex.getMessage());
         }
     }
 
     /**
-     * Retrieves a list of files for the specified user with a given limit.
+     * Извлекает список файлов для указанного пользователя с заданным лимитом.
      *
-     * @param limit    The maximum number of files in the list.
-     * @param username The name of the user for whom to retrieve the file list.
-     * @return A list of FileResponse objects.
+     * @param limit Максимальное количество файлов в списке.
+     * @param user  Аутентифицированный объект пользователя (получен напрямую из контроллера).
+     * @return Список объектов FileResponse.
      */
-    @Transactional(readOnly = true) // Read-only transaction
-    public List<FileResponse> getFileList(int limit, String username) {
-        log.info("User '{}' is requesting a file list with limit {}", username, limit);
+    @Transactional(readOnly = true)
+    public List<FileResponse> getFileList(int limit, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+        log.info("User '{}' is requesting a file list with limit {}", user.getUsername(), limit);
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.warn("User '{}' not found when retrieving file list.", username);
-                    return new CloudStorageException("User '" + username + "' not found.");
-                });
+        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
+        // User user = userRepository.findByUsername(username)
+        //         .orElseThrow(() -> {
+        //             log.warn("User '{}' not found when retrieving file list.", username);
+        //             return new CloudStorageException("User '" + username + "' not found.");
+        //         });
 
-        // In a real application, Spring Data JPA Pageable or Slice would be used
-        // for efficient limiting and pagination.
-        // Here, for simplicity, all files are fetched and then limited in memory.
-        List<File> files = fileRepository.findByUser(user);
+        List<File> files = fileRepository.findByUser(user); // Используем уже имеющийся объект User
 
-        log.info("Found {} total files for user '{}' before applying limit.", files.size(), username);
+        log.info("Found {} total files for user '{}' before applying limit.", files.size(), user.getUsername());
 
         List<FileResponse> limitedFiles = files.stream()
                 .limit(limit)
                 .map(this::mapToFileResponse)
                 .collect(Collectors.toList());
 
-        log.info("Returning {} files for user '{}' after applying limit of {}.", limitedFiles.size(), username, limit);
+        log.info("Returning {} files for user '{}' after applying limit of {}.", limitedFiles.size(), user.getUsername(), limit);
         return limitedFiles;
     }
 
-    // Helper method to convert a File entity to a FileResponse DTO
     private FileResponse mapToFileResponse(File file) {
         return FileResponse.builder()
                 .filename(file.getFilename())

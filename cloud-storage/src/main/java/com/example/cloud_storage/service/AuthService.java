@@ -47,9 +47,7 @@ public class AuthService implements UserDetailsService {
         String authToken = UUID.randomUUID().toString();
         user.setAuthToken(authToken);
         userRepository.save(user);
-
         // Не логируем полный токен из соображений безопасности.
-        // Логируем только его часть для возможности поиска.
         log.info("User '{}' successfully logged in. Token suffix: ...{}", username, authToken.substring(authToken.length() - 4));
 
         return authToken;
@@ -72,8 +70,6 @@ public class AuthService implements UserDetailsService {
 
 
     public User getUserByAuthToken(String authToken) {
-        // Эта операция вызывается часто, поэтому для нее можно использовать уровень DEBUG,
-        // если вы хотите видеть ее в логах только при детальной отладке.
         log.debug("Fetching user by token suffix: ...{}", authToken.substring(authToken.length() - 4));
         return userRepository.findByAuthToken(authToken)
                 .orElseThrow(() -> new CloudStorageException("Unauthorized: Invalid auth token"));
@@ -95,19 +91,15 @@ public class AuthService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Это внутренний метод Spring Security, DEBUG уровень здесь идеален.
+    public User loadUserByUsername(String username) throws UsernameNotFoundException { // !!! Возвращаем ваш User
         log.debug("Spring Security is loading user by username: '{}'", username);
+        // Возвращаем ваш объект User напрямую, т.к. он реализует UserDetails
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> {
                     log.warn("Spring Security failed to find user '{}'", username);
                     return new UsernameNotFoundException("User not found with username: " + username);
                 });
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.emptyList()
-        );
+        return user;
     }
 }
 

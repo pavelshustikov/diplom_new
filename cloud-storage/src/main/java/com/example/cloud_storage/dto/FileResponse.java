@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class FileResponse {
     private String filename;
     private long size;
-    private String uploadDate; // Используйте String для даты, если не хотите передавать LocalDateTime напрямую
+    //private String uploadDate; // Используйте String для даты, если не хотите передавать LocalDateTime напрямую
 }

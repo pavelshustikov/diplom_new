@@ -1,5 +1,6 @@
 package com.example.cloud_storage;
 
+import com.example.cloud_storage.exception.CloudStorageException;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -19,15 +20,31 @@ public class CloudStorageApplication {
 
 
 	@Bean
-	public CommandLineRunner init(FileService fileService, AuthService authService, PasswordEncoder passwordEncoder) {
+	public CommandLineRunner init(FileService fileService, AuthService authService) {
 		return args -> {
-			fileService.init(); // Инициализация папки для хранения файлов
+			try {
+				fileService.init(); // Инициализация папки для хранения файлов
 
-			if (authService.getUserRepository().findByUsername("user1").isEmpty()) { // Проверяем, что пользователя нет
-				authService.registerUser("user1", "password");
-			}
-			if (authService.getUserRepository().findByUsername("user2").isEmpty()) {
-				authService.registerUser("user2", "strong_password");
+				// Мы просто пытаемся зарегистрировать пользователей.
+				// Если они уже существуют, метод registerUser выбросит исключение,
+				// которое мы можем проигнорировать в блоке catch.
+				try {
+					authService.registerUser("user1", "password");
+				} catch (CloudStorageException e) {
+					// Игнорируем ошибку "пользователь уже существует" при запуске
+					System.out.println("User 'user1' already exists.");
+				}
+
+				try {
+					authService.registerUser("user2", "strong_password");
+				} catch (CloudStorageException e) {
+					System.out.println("User 'user2' already exists.");
+				}
+
+			} catch (Exception e) {
+				// Логируем любую другую ошибку при инициализации
+				// log.error("Initialization failed", e);
+				System.err.println("Initialization failed: " + e.getMessage());
 			}
 		};
 	}
