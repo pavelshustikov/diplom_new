@@ -3,15 +3,15 @@ package com.example.cloud_storage;
 import com.example.cloud_storage.exception.CloudStorageException;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
 import com.example.cloud_storage.service.FileService;
 import com.example.cloud_storage.service.AuthService; // Добавляем импорт AuthService
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder; // Добавляем импорт PasswordEncoder
 
 @SpringBootApplication
+@Slf4j
 public class CloudStorageApplication {
 
 	public static void main(String[] args) {
@@ -23,28 +23,25 @@ public class CloudStorageApplication {
 	public CommandLineRunner init(FileService fileService, AuthService authService) {
 		return args -> {
 			try {
-				fileService.init(); // Инициализация папки для хранения файлов
+				fileService.init();
+				log.info("File storage successfully initialized.");
 
-				// Мы просто пытаемся зарегистрировать пользователей.
-				// Если они уже существуют, метод registerUser выбросит исключение,
-				// которое мы можем проигнорировать в блоке catch.
 				try {
 					authService.registerUser("user1", "password");
+					log.info("Test user 'user1' was registered.");
 				} catch (CloudStorageException e) {
-					// Игнорируем ошибку "пользователь уже существует" при запуске
-					System.out.println("User 'user1' already exists.");
+					log.warn("Test user 'user1' already exists. Skipping registration.");
 				}
 
 				try {
 					authService.registerUser("user2", "strong_password");
+					log.info("Test user 'user2' was registered.");
 				} catch (CloudStorageException e) {
-					System.out.println("User 'user2' already exists.");
+					log.warn("Test user 'user2' already exists. Skipping registration.");
 				}
 
 			} catch (Exception e) {
-				// Логируем любую другую ошибку при инициализации
-				// log.error("Initialization failed", e);
-				System.err.println("Initialization failed: " + e.getMessage());
+				log.error("Failed to initialize application data.", e);
 			}
 		};
 	}

@@ -11,22 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import java.security.Principal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-
-/**
- * Controller for managing user files.
- *
- * This controller uses standard Spring Security mechanisms for authentication.
- * Instead of manual token handling, it retrieves user information
- * directly from the Principal object injected by Spring MVC.
- */
-
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // !!! ИСПОЛЬЗУЕМ ЭТУ АННОТАЦИЮ
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -44,13 +30,13 @@ public class FileController {
      */
     @PostMapping("/file")
     public ResponseEntity<Void> uploadFile(
-            @AuthenticationPrincipal User user, // !!! ПРИНИМАЕМ ОБЪЕКТ User
+            @AuthenticationPrincipal User user, // ПРИНИМАЕМ ОБЪЕКТ User
             @RequestParam("file") MultipartFile file
     ) {
         String username = user.getUsername(); // Получаем имя пользователя из объекта User
         log.info("Request to upload file '{}' from user '{}'", file.getOriginalFilename(), username);
 
-        fileService.uploadFile(file.getOriginalFilename(), file, user); // !!! ПЕРЕДАЕМ ОБЪЕКТ User в сервис
+        fileService.uploadFile(file.getOriginalFilename(), file, user); //ПЕРЕДАЕМ ОБЪЕКТ User в сервис
 
         log.info("Successfully processed upload request for file '{}' from user '{}'", file.getOriginalFilename(), username);
         return ResponseEntity.ok().build();
@@ -71,7 +57,7 @@ public class FileController {
         String username = user.getUsername();
         log.info("Request to delete file '{}' from user '{}'", filename, username);
 
-        fileService.deleteFile(filename, user); // !!! ПЕРЕДАЕМ ОБЪЕКТ User в сервис
+        fileService.deleteFile(filename, user); // ПЕРЕДАЕМ ОБЪЕКТ User в сервис
 
         log.info("Successfully processed delete request for file '{}' from user '{}'", filename, username);
         return ResponseEntity.ok().build();
@@ -86,13 +72,13 @@ public class FileController {
      */
     @GetMapping("/list")
     public ResponseEntity<List<FileResponse>> getFileList(
-            @AuthenticationPrincipal User user, // !!! ПРИНИМАЕМ ОБЪЕКТ User
+            @AuthenticationPrincipal User user, //ПРИНИМАЕМ ОБЪЕКТ User
             @RequestParam("limit") int limit
     ) {
         String username = user.getUsername();
         log.info("Request to get file list (limit: {}) from user '{}'", limit, username);
 
-        // !!! ПЕРЕДАЕМ ОБЪЕКТ User в сервис, избегая повторного поиска
+        // ПЕРЕДАЕМ ОБЪЕКТ User в сервис, избегая повторного поиска
         List<FileResponse> files = fileService.getFileList(limit, user);
 
         log.info("Successfully processed request for file list for user '{}'. Found {} files.", username, files.size());

@@ -2,6 +2,7 @@ package com.example.cloud_storage.controller;
 
 import com.example.cloud_storage.dto.AuthRequest;
 import com.example.cloud_storage.dto.AuthResponse;
+import com.example.cloud_storage.dto.ErrorResponse;
 import com.example.cloud_storage.exception.CloudStorageException;
 import com.example.cloud_storage.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
@@ -19,24 +20,28 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 
-@Slf4j
 @RequiredArgsConstructor
-@RestController // Помечает класс как REST контроллер
+@RestController
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
+    private static int errorIdCounter = 0;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest authRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
+            // Используем геттеры из DTO AuthRequest
             String authToken = authService.login(authRequest.getLogin(), authRequest.getPassword());
+            log.info("User '{}' logged in successfully.", authRequest.getLogin());
+            // В случае успеха возвращаем DTO AuthResponse
             return ResponseEntity.ok(new AuthResponse(authToken));
 
         } catch (CloudStorageException ex) {
-
-            log.warn("Login failed for user {}: {}", authRequest.getLogin(), ex.getMessage());
-            // ошибка.
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthResponse(ex.getMessage()));
+            log.warn("Login failed for user '{}': {}", authRequest.getLogin(), ex.getMessage());
+            // В случае ошибки возвращаем ErrorResponse
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(ex.getMessage(), ++errorIdCounter));
         }
     }
 
@@ -44,10 +49,10 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestHeader("auth-token") String authToken) {
         try {
             authService.logout(authToken);
+            log.info("User with token prefix '{}...' logged out.", authToken.substring(0, Math.min(authToken.length(), 15)));
             return ResponseEntity.ok().build();
         } catch (CloudStorageException ex) {
-            // Если токен не найден, сервис выбросит исключение.
-            // 401 Unauthorized.
+            log.warn("Logout failed for token prefix '{}...': {}", authToken.substring(0, Math.min(authToken.length(), 15)), ex.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }

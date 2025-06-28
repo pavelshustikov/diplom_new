@@ -84,15 +84,8 @@ public class FileService {
     }
 
     @Transactional
-    public void uploadFile(String filename, MultipartFile multipartFile, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+    public void uploadFile(String filename, MultipartFile multipartFile, User user) { // ПРИНИМАЕМ ОБЪЕКТ User
         log.info("User '{}' is attempting to upload file '{}'", user.getUsername(), filename);
-
-        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
-        // User user = userRepository.findByUsername(username)
-        //         .orElseThrow(() -> {
-        //             log.warn("User '{}' not found during file upload.", username);
-        //             return new CloudStorageException("User '" + username + "' not found.");
-        //         });
 
         if (fileRepository.findByFilenameAndUser(filename, user).isPresent()) {
             log.warn("User '{}' failed to upload file. File '{}' already exists.", user.getUsername(), filename);
@@ -121,15 +114,8 @@ public class FileService {
     }
 
     @Transactional
-    public void deleteFile(String filename, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+    public void deleteFile(String filename, User user) { //  ПРИНИМАЕМ ОБЪЕКТ User
         log.info("User '{}' is attempting to delete file '{}'", user.getUsername(), filename);
-
-        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
-        // User user = userRepository.findByUsername(username)
-        //         .orElseThrow(() -> {
-        //             log.warn("User '{}' not found during file deletion.", username);
-        //             return new CloudStorageException("User '" + username + "' not found.");
-        //         });
 
         File fileEntity = fileRepository.findByFilenameAndUser(filename, user)
                 .orElseThrow(() -> {
@@ -156,15 +142,8 @@ public class FileService {
      * @return Список объектов FileResponse.
      */
     @Transactional(readOnly = true)
-    public List<FileResponse> getFileList(int limit, User user) { // !!! ПРИНИМАЕМ ОБЪЕКТ User
+    public List<FileResponse> getFileList(int limit, User user) { //  ПРИНИМАЕМ ОБЪЕКТ User
         log.info("User '{}' is requesting a file list with limit {}", user.getUsername(), limit);
-
-        // !!! УДАЛЯЕМ ПОВТОРНЫЙ ПОИСК ПОЛЬЗОВАТЕЛЯ.
-        // User user = userRepository.findByUsername(username)
-        //         .orElseThrow(() -> {
-        //             log.warn("User '{}' not found when retrieving file list.", username);
-        //             return new CloudStorageException("User '" + username + "' not found.");
-        //         });
 
         List<File> files = fileRepository.findByUser(user); // Используем уже имеющийся объект User
 
