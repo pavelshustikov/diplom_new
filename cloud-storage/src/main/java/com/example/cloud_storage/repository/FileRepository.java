@@ -22,23 +22,6 @@ public interface FileRepository extends JpaRepository<File, Long> {
      */
     List<File> findByUser(User user);
 
-    // Пользовательский метод для поиска файла по имени файла и пользователю
-    //Optional<File> findByFilenameAndUser(String filename, User user);
 
-    // Пользовательский метод для поиска всех файлов конкретного пользователя, отсортированных по дате загрузки
-//    List<File> findAllByUserOrderByUploadDateDesc(User user);
-//
-//
-//    List<File> findByUser(User user, org.springframework.data.domain.Pageable pageable);
-
-    // Метод для удаления файла по имени файла и пользователю
-//    void deleteByFilenameAndUser(String filename, User user);
-//
-//
-//
-//        Optional<File> findByFilenameAndUser(String filename, User user);
-//        List<File> findByUser(User user); // Метод для получения всех файлов пользователя
-        // Если вам нужна пагинация, вы можете добавить:
-        // List<File> findByUser(User user, org.springframework.data.domain.Pageable pageable);
 
 }

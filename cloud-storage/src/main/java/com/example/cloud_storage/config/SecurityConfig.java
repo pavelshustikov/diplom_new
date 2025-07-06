@@ -93,10 +93,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login").permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                .logout(logout -> logout
+                .logoutUrl("/logout") // Эндпоинт, который ожидает POST-запрос от фронтенда
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    // Вместо перенаправления, просто отправляем успешный статус
+                    response.setStatus(HttpServletResponse.SC_OK); // Или SC_NO_CONTENT (204)
+                    log.info("User logged out successfully. Responded with 200 OK.");
+                    
+
+                })
+                .permitAll() // Разрешаем доступ к /logout всем (даже неаутентифицированным)
+        );
 
         http.addFilterBefore(authTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 }

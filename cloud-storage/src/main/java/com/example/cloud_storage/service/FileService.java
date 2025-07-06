@@ -6,7 +6,6 @@ import com.example.cloud_storage.model.File;
 import com.example.cloud_storage.model.User;
 import com.example.cloud_storage.repository.FileRepository;
 import org.springframework.transaction.annotation.Transactional;
-//import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,38 +22,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-
 import com.example.cloud_storage.repository.UserRepository; // Добавляем репозиторий для User
-
-
 import javax.annotation.PostConstruct;
-
 import java.util.stream.Collectors;
 
-
-import com.example.cloud_storage.dto.FileResponse;
-import com.example.cloud_storage.exception.CloudStorageException;
-import com.example.cloud_storage.model.File;
-import com.example.cloud_storage.model.User;
-import com.example.cloud_storage.repository.FileRepository;
-import com.example.cloud_storage.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 
 @Service
