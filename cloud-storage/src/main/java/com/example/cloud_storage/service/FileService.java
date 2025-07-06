@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.cloud_storage.model.File;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +55,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 
 @Service
@@ -164,4 +165,43 @@ public class FileService {
                 .size(file.getSize())
                 .build();
     }
+
+    @Transactional
+    public void editFileName(String oldFilename, String newFilename, User user) {
+        log.info("User '{}' is attempting to rename file '{}' to '{}'", user.getUsername(), oldFilename, newFilename);
+
+        // 1. Находим файл в базе данных по старому имени и пользователю.
+        // Если не найден, выбрасываем исключение. Это гарантирует, что пользователь редактирует свой файл.
+        File fileToUpdate = fileRepository.findByFilenameAndUser(oldFilename, user)
+                .orElseThrow(() -> new CloudStorageException("File not found for renaming: " + oldFilename));
+
+        // 2. (Опционально, но рекомендуется) Проверяем, не занято ли новое имя.
+        if (fileRepository.findByFilenameAndUser(newFilename, user).isPresent()) {
+            throw new CloudStorageException("A file with the name '" + newFilename + "' already exists.");
+        }
+
+        try {
+            // 3. Переименовываем физический файл на диске
+            Path oldPath = Paths.get(fileToUpdate.getPath());
+            Path newPath = oldPath.resolveSibling(user.getUsername() + "_" + newFilename); // Формируем новое имя файла на диске
+            Files.move(oldPath, newPath);
+            log.info("Physical file moved from {} to {}", oldPath, newPath);
+
+            // 4. Обновляем данные в сущности, которая уже отслеживается JPA
+            fileToUpdate.setFilename(newFilename);
+            fileToUpdate.setPath(newPath.toString());
+            // fileToUpdate.setUploadDate(LocalDateTime.now()); // Можно обновлять и дату, если нужно
+
+            // 5. Сохраняем изменения в базе данных.
+            // Так как метод транзакционный, Spring JPA сам сохранит изменения при коммите транзакции.
+            // Явный вызов save() для наглядности.
+            fileRepository.save(fileToUpdate);
+
+            log.info("File '{}' was successfully renamed to '{}' for user '{}'", oldFilename, newFilename, user.getUsername());
+        } catch (IOException e) {
+            log.error("Failed to rename physical file from '{}' to '{}'", oldFilename, newFilename, e);
+            //throw new CloudStorageException("Error while renaming file on the server.", e);
+        }
+    }
+
 }

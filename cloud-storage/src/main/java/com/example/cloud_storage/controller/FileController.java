@@ -1,5 +1,6 @@
 package com.example.cloud_storage.controller;
 
+import com.example.cloud_storage.dto.FileEditRequest;
 import com.example.cloud_storage.dto.FileResponse;
 import com.example.cloud_storage.model.User;
 import com.example.cloud_storage.service.AuthService;
@@ -29,6 +30,7 @@ public class FileController {
      * @return ResponseEntity со статусом 200 OK в случае успеха.
      */
     @PostMapping("/file")
+    //@GetMapping ("/file")
     public ResponseEntity<Void> uploadFile(
             @AuthenticationPrincipal User user, // ПРИНИМАЕМ ОБЪЕКТ User
             @RequestParam("file") MultipartFile file
@@ -84,4 +86,23 @@ public class FileController {
         log.info("Successfully processed request for file list for user '{}'. Found {} files.", username, files.size());
         return ResponseEntity.ok(files);
     }
+
+    /**
+     * Редактирует (переименовывает) файл.
+     * Принимает старое имя в query-параметре и новое имя в теле запроса.
+     */
+    @PutMapping("/file")
+    public ResponseEntity<Void> editFile(
+            @AuthenticationPrincipal User user,
+            @RequestParam("filename") String oldFilename,
+            @RequestBody FileEditRequest request
+    ) {
+        String newFilename = request.getFilename();
+        log.info("Request from user '{}' to rename file '{}' to '{}'", user.getUsername(), oldFilename, newFilename);
+        fileService.editFileName(oldFilename, newFilename, user);
+        log.info("Successfully processed rename request for user '{}'", user.getUsername());
+        return ResponseEntity.ok().build();
+    }
 }
+
+
